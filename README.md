@@ -198,16 +198,39 @@ X-XSS-Protection: 1; mode=block>
 ../phone-shop/json$ http boot2docker:9000/v1/orders/2
 ```
 ```
-HTTP/1.1 404 Not Found
-Content-Length: 0
+HTTP/1.1 200 OK
+Content-Length: 343
 Content-Security-Policy: default-src 'self'
-Content-Type: text/plain; charset=UTF-8
-Date: Wed, 03 Oct 2018 13:01:48 GMT
+Content-Type: application/json
+Date: Wed, 03 Oct 2018 23:29:12 GMT
 Referrer-Policy: origin-when-cross-origin, strict-origin-when-cross-origin
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 X-Permitted-Cross-Domain-Policies: master-only
 X-XSS-Protection: 1; mode=block
+
+{
+    "customerEmail": "jotason.velasco@gmail.com",
+    "customerName": "Jose",
+    "customerSurname": "Velasco",
+    "lineItems": [
+        {
+            "phoneId": 1,
+            "phoneReference": "http://boot2docker:9000/v1/phones/1",
+            "quantity": 2,
+            "subtotal": 301.04
+        },
+        {
+            "phoneId": 2,
+            "phoneReference": "http://boot2docker:9000/v1/phones/2",
+            "quantity": 1,
+            "subtotal": 1100.32
+        }
+    ],
+    "orderId": 2,
+    "totalPrice": 1401.36
+}
+
 ```
 
 
@@ -254,7 +277,7 @@ X-XSS-Protection: 1; mode=block
 ## Running the tests
 
 Each project has its own suite with unit and functional tests.
-To run the tests move into root project folder and run ´´´sbt run´´´.
+To run the tests move into root project folder and run ```sbt run```.
 
 Here's **inventory-management** results:
 ```
