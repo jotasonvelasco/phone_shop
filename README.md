@@ -303,6 +303,7 @@ Here's **order-processor** results:
 [success] Total time: 6 s, completed Oct 3, 2018
 ```
 
+
 ## Logging
 
 To checking out the **inventory-management** logs:
