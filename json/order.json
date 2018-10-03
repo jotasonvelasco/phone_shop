@@ -1,0 +1,15 @@
+{
+  "customerName": "Jose",
+  "customerSurname": "Velasco",
+  "customerEmail": "jotason.velasco@gmail.com",
+  "lineItems": [
+    {
+      "phoneId": 1,
+      "quantity": 2
+    },
+    {
+      "phoneId": 2,
+      "quantity": 1
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+- HOW WOULD YOU IMPROVE THE SYSTEM?
+
+
+En este momento "Phone Shop" está pensada siguiendo un enfoque en microservicios por las siguientes razones:
+
+	- Cada una de las rest apis es independiente en lo que se refiere a artefactos.
+	- Cada una de las rest apis tiene su propia base de datos.
+	- La comunicación entre las dos apis es vía http rest.
+	- Al estar implementado con Play framework (construido sobre Akka HTTP y Akka streams) tenemos backpressure en la
+	comunicación client-server. A su vez también tenemos backpressure en la comunicación server-db al usar la
+	libreria Slick.
+
+
+Aun así, para que fuera un sistema en microservicios completo y contar con las ventajas de este tipo de arquitectura
+(Responsive, Resilient, Elastic, Available) se plantean las siguientes mejoras:
+
+
+	- Crear un cluster con Akka Cluster + conductR y añadir cada uno de los microservicios a este cluster. Con conductR
+	y Akka cluster tenemos "out of the box" varios de los componentes necesarios para armar una arquitectura en
+	microservicios: Service discovery, backpressure (ya dado con Play y Slick), Resilience y fácil Deployment. Notar
+	que conductR es un sistema reactivo a su vez (reactive manifesto)
+
+	- Implementar cada uno de los microservicios usando el Actor model con Akka/Akka cluster. Con un diseño con actor
+	model el código mejora en legibilidad y escalabilidad. Usando Akka y el actor model se podría encarar un
+	desarrollo/diseño DDD donde los phones, order, catalog y demás estuvieran implementados como actors cumpliendo
+	la función de "entities". Si a esto le sumamos el sharding de actors que ofrece Akka Cluster y lo el poco peso que
+	tiene un actor, podríamos tener en memoria estas "entities" (temporalmente) mientras el cliente opera con ellas. De
+	esta forma ganamos en tiempo de respuesta.
+
+	- Crear un tercer microservicio para el manejo de clientes.
+
+	- Implementar un modelo CQRS con la escritura usando Cassandra (event-sourcing y optimizada para la escritura) y
+	la lectura con Elastic Search (optimizada para la lectura + api muy intuitiva para crear queries). Con esto
+	ganamos en scalability, resiliency, availability y responsiveness. Algunas de las ventajas de CQRS son que podemos
+	escalar independientemente la lectura y la escritura, y que podemos tener distintos modelos de datos optimizados
+	para cada caso.
+        
+        
+    Usando Cassandra (CQRS-escritura) en combinación con Akka-persistence-query podríamos tener listeners en cada uno
+    de los microservicios escuchando a ciertos eventos. Como ejemplo podemos pensar en "Phone Shop" con un nuevo
+    requerimiento de control de stock al hacer un pedido: order-processor solicitaría el catálogo pero en este caso
+    con el añadiendo el stock disponible de cada phone. Si hubiera existencias persistiría un evento OrderCreated
+    pendiente de confirmación. Por otro lado, inventory-management estaría escuchando este evento y persistiría
+    un evento InventoryDecremented si siguiera existiendo stock o un NotInventoryAvailable para el order en cuestión.
+    Acto seguido, order-processor estaría escuchando estos eventos y cambiaría el estado del pedido según el caso.
+    Con este ejemplo se observa claramente como los microservicios se desacoplan más aún de lo que estaban.
+
+	La escritura de datos en Elastic Search se podría implementar con distintos actors escuchando
+	(Akka-persistence-query) cada uno de los eventos que se producen en Cassandra y persistiendo en Elastic Search
+	dicha info adaptándola al modelo de datos de lectura.
+
+
+
+	- Como última propuesta de mejora me refiero a la respuesta a la segunda pregunta.
+
+
+
+
+- HOW WOULD YOU AVOID YOUR ORDER API TO BE OVERFLOW?
+
+
+Al estar usando Play + Slick tenemos "out of the box" el mecanismo backpressure (comentado en el punto anterior).
+En caso de que el "cosumer" (microservicio + DB) no fueran capaces de procesar pedidos el mecanismo de backpressure
+frenaría al "producer". En el caso de que el "producer" fuera otro componente del sistema éste manejaría
+las notificaciones de backpressure para bajar la demanda. Por otro lado, si el "producer" es un usuario humano del
+sistema podríamos sumar un circuit-breaker (componente en Akka) de forma que se informara al usuario de que no es
+posible atender temporalmente su solicitud (graceful degradation). En conjunción con circuit-breaker y backpressure
+podríamos crear un componente (un actor) que monitoreara estos procesos, y en el caso de detectar overflow levantar
+nuevos nodos en el Akka-cluster para satisfacer la demanda. Una vez que bajara la demanda se eliminarían los nodos
+creados (elasticity).
+
+En resumen: clustering (Akka Cluster) + backpressure (Play/Akka streams/Slick) + circuit-breakers (Akka)
+
+
+
+
+- NOTAS
+
+(*1) El proyecto sbt "root" está compuesto de dos módulos: "inventory-management" y "order-processor". Éstos no
+tienen dependencia mutua. Se creó este "root" para la gestión de librerias externas comunes y manejo del build.
+
+
+- TECH
+
+* Akka - https://akka.io/
+* Play framework - https://www.playframework.com/
+* Elastic Search - https://www.elastic.co/
+* Cassandra - http://cassandra.apache.org/
+* Slick - http://slick.lightbend.com/
+* conductR - https://conductr.lightbend.com/
+* Reactive Manifesto - https://www.reactivemanifesto.org/
+
+
+

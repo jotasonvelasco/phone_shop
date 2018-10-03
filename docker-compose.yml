@@ -1,0 +1,94 @@
+version: '3.1'
+
+services:
+
+  orderProcessor:
+    image: order-processor:latest
+    container_name: orderProcessor
+    environment:
+      - JAVA_OPTS=-Dhttp.port=${HOST_PORT_ORDER_PROCESSOR}
+      - TZ=Europe/Amsterdam
+      - DATABASE_USER=docker
+      - DATABASE_PASSWORD=docker
+      - DATABASE_URL=jdbc:postgresql://postgresOrderProcessorAlias:5432/${POSTGRES_DB_ORDER_PROCESSOR}
+      - INVENTORY_BASE_URL=http://${INVENTORY_ALIAS}:${HOST_PORT_INVENTORY}/v1/phones
+      - HOST_PORT=${HOST_PORT_ORDER_PROCESSOR}
+      - HOST_DOMAIN=${HOST_DOMAIN_ORDER_PROCESSOR}
+      - HOST_DOMAIN_INVENTORY=${HOST_DOMAIN_INVENTORY}
+      - HOST_PORT_INVENTORY=${HOST_PORT_INVENTORY}
+      - HOST_ALLOWED=${HOST_DOMAIN_ORDER_PROCESSOR}:${HOST_PORT_ORDER_PROCESSOR}
+    ports:
+      - ${HOST_PORT_ORDER_PROCESSOR}:${HOST_PORT_ORDER_PROCESSOR}
+    depends_on:
+      - postgresOrderProcessor
+      - inventory
+    networks:
+      default:
+        aliases:
+          - ${ORDER_PROCESSOR_ALIAS}
+
+
+  postgresOrderProcessor:
+      image: postgres:latest
+      container_name: postgresOrderProcessor
+      environment:
+        - TZ=Europe/Amsterdam
+        - POSTGRES_DB=${POSTGRES_DB_ORDER_PROCESSOR}
+        - POSTGRES_USER=docker
+        - POSTGRES_PASSWORD=docker
+      ports:
+        - 5001:5432
+      networks:
+        default:
+          aliases:
+            - postgresOrderProcessorAlias
+      volumes:
+        - "./sql/order_processor:/docker-entrypoint-initdb.d"
+
+
+  inventory:
+    image: inventory-management:latest
+    container_name: inventory
+    environment:
+      - JAVA_OPTS=-Dhttp.port=${HOST_PORT_INVENTORY}
+      - TZ=Europe/Amsterdam
+      - DATABASE_USER=docker
+      - DATABASE_PASSWORD=docker
+      - DATABASE_URL=jdbc:postgresql://postgresInventoryAlias:5432/${POSTGRES_DB_INVENTORY}
+      - HOST_PORT=${HOST_PORT_INVENTORY}
+      - HOST_DOMAIN=${HOST_DOMAIN_INVENTORY}
+      - HOST_ALLOWED_1=${HOST_DOMAIN_INVENTORY}:${HOST_PORT_INVENTORY}
+      - HOST_ALLOWED_2=${INVENTORY_ALIAS}:${HOST_PORT_INVENTORY}
+    ports:
+      - ${HOST_PORT_INVENTORY}:${HOST_PORT_INVENTORY}
+    depends_on:
+      - postgresInventory
+    networks:
+      default:
+        aliases:
+          - ${INVENTORY_ALIAS}
+
+
+  postgresInventory:
+      image: postgres:latest
+      container_name: postgresInventory
+      environment:
+        - TZ=Europe/Amsterdam
+        - POSTGRES_DB=${POSTGRES_DB_INVENTORY}
+        - POSTGRES_USER=docker
+        - POSTGRES_PASSWORD=docker
+      ports:
+        - 5000:5432
+      networks:
+        default:
+          aliases:
+            - postgresInventoryAlias
+      volumes:
+        - "./sql/inventory:/docker-entrypoint-initdb.d"
+
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
